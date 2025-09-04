@@ -28,7 +28,7 @@ services:
       # Search engine integration
       - ENABLE_RAG_WEB_SEARCH=true
       - RAG_WEB_SEARCH_ENGINE=searxng
-      - SEARXNG_QUERY_URL=http://searxng:8081/search?q={query}
+      - SEARXNG_QUERY_URL=http://searxng:8080/search?q={query}
       
       # Security and customization
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-your-secret-key-change-this}
