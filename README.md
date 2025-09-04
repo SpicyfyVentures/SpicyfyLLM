@@ -285,6 +285,50 @@ After successful installation:
 - **SearXNG**: http://localhost:8081
 - **ngrok Public URL**: Displayed in terminal (if enabled)
 
+## 🔄 Auto-Start on Boot
+
+To automatically start all services after system reboot:
+
+### macOS (Recommended)
+
+**Option 1: Using Cron (Simplest)**
+```bash
+# Edit your crontab
+crontab -e
+
+# Add this line to run at boot
+@reboot cd /Users/vamsikandikonda/SpicyfyLLM && ./startup.sh
+```
+
+**Option 2: Using LaunchAgent**
+```bash
+# Copy the LaunchAgent file
+cp com.spicyfyllm.startup.plist ~/Library/LaunchAgents/
+
+# Load and enable the service
+launchctl load ~/Library/LaunchAgents/com.spicyfyllm.startup.plist
+launchctl enable gui/$(id -u)/com.spicyfyllm.startup
+```
+
+### Linux
+
+```bash
+# Copy the systemd service file
+sudo cp spicyfyllm.service /etc/systemd/system/
+
+# Enable and start the service
+sudo systemctl enable spicyfyllm.service
+sudo systemctl start spicyfyllm.service
+```
+
+### What Auto-Start Does
+
+- ✅ Waits for Docker to be ready
+- ✅ Starts OpenWebUI and SearXNG containers
+- ✅ Starts ngrok tunnel with your custom domain (if configured)
+- ✅ Logs startup process to `startup.log`
+- ✅ Shows service status after startup
+
 ## 🔒 Security Considerations
 
 - **Local by default**: All services run locally unless ngrok is enabled

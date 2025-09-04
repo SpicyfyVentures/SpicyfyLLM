@@ -985,6 +985,61 @@ EOF
     fi
 }
 
+setup_autostart() {
+    print_status "Setting up auto-start on boot..."
+    
+    local current_dir=$(pwd)
+    local startup_script="$current_dir/startup.sh"
+    
+    # Detect OS
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS - use cron
+        print_status "Configuring cron job for macOS..."
+        
+        # Check if cron job already exists
+        if crontab -l 2>/dev/null | grep -q "$startup_script"; then
+            print_warning "Auto-start cron job already exists"
+        else
+            # Add cron job
+            (crontab -l 2>/dev/null; echo "@reboot cd $current_dir && ./startup.sh") | crontab -
+            print_success "Auto-start cron job added"
+        fi
+        
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux - offer both cron and systemd
+        print_status "Choose auto-start method for Linux:"
+        echo "1) Cron job (simple)"
+        echo "2) Systemd service (advanced)"
+        read -p "Choose option (1/2): " -n 1 -r
+        echo
+        
+        if [[ $REPLY == "1" ]]; then
+            # Cron job
+            if crontab -l 2>/dev/null | grep -q "$startup_script"; then
+                print_warning "Auto-start cron job already exists"
+            else
+                (crontab -l 2>/dev/null; echo "@reboot cd $current_dir && ./startup.sh") | crontab -
+                print_success "Auto-start cron job added"
+            fi
+        elif [[ $REPLY == "2" ]]; then
+            # Systemd service
+            if [ -f "/etc/systemd/system/spicyfyllm.service" ]; then
+                print_warning "Systemd service already exists"
+            else
+                sudo cp spicyfyllm.service /etc/systemd/system/
+                sudo systemctl enable spicyfyllm.service
+                print_success "Systemd service installed and enabled"
+            fi
+        fi
+    else
+        print_warning "Unsupported OS for auto-start setup"
+        return 1
+    fi
+    
+    print_success "Auto-start configured! Services will start automatically on boot."
+    print_info "You can disable auto-start by running: crontab -e (and removing the @reboot line)"
+}
+
 cleanup() {
     print_status "Cleaning up..."
     
@@ -997,14 +1052,36 @@ cleanup() {
         fi
     fi
     
-    # Stop OpenWebUI container
-    if docker ps --format 'table {{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-        docker stop $CONTAINER_NAME
+    # Stop and remove containers
+    docker-compose down
+    
+    # Remove auto-start configurations
+    local current_dir=$(pwd)
+    local startup_script="$current_dir/startup.sh"
+    
+    # Remove cron job if it exists
+    if crontab -l 2>/dev/null | grep -q "$startup_script"; then
+        print_status "Removing auto-start cron job..."
+        crontab -l 2>/dev/null | grep -v "$startup_script" | crontab -
+        print_success "Auto-start cron job removed"
     fi
     
-    # Stop SearXNG container
-    if docker ps --format 'table {{.Names}}' | grep -q "^${SEARXNG_CONTAINER}$"; then
-        docker stop $SEARXNG_CONTAINER
+    # Remove systemd service if it exists (Linux)
+    if [ -f "/etc/systemd/system/spicyfyllm.service" ]; then
+        print_status "Removing systemd service..."
+        sudo systemctl stop spicyfyllm.service 2>/dev/null || true
+        sudo systemctl disable spicyfyllm.service 2>/dev/null || true
+        sudo rm -f /etc/systemd/system/spicyfyllm.service
+        sudo systemctl daemon-reload
+        print_success "Systemd service removed"
+    fi
+    
+    # Remove LaunchAgent if it exists (macOS)
+    if [ -f "$HOME/Library/LaunchAgents/com.spicyfyllm.startup.plist" ]; then
+        print_status "Removing LaunchAgent..."
+        launchctl unload "$HOME/Library/LaunchAgents/com.spicyfyllm.startup.plist" 2>/dev/null || true
+        rm -f "$HOME/Library/LaunchAgents/com.spicyfyllm.startup.plist"
+        print_success "LaunchAgent removed"
     fi
     
     print_success "Cleanup completed"
@@ -1171,6 +1248,15 @@ case "${1:-}" in
         fi
         
         print_success "🎉 Setup completed successfully!"
+        
+        # Ask user if they want to set up auto-start
+        echo ""
+        read -p "Set up auto-start on boot? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            setup_autostart
+        fi
+        
         echo ""
         echo "📋 Next steps:"
         echo "1. 🌐 Open http://localhost:$OPENWEBUI_PORT in your browser"

@@ -1,0 +1,17 @@
+[Unit]
+Description=SpicyfyLLM OpenWebUI Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=forking
+User=vamsikandikonda
+Group=vamsikandikonda
+WorkingDirectory=/Users/vamsikandikonda/SpicyfyLLM
+ExecStart=/Users/vamsikandikonda/SpicyfyLLM/startup.sh
+ExecStop=/Users/vamsikandikonda/SpicyfyLLM/setup-openwebui.sh --cleanup
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

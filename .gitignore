@@ -5,6 +5,8 @@ ngrok.log
 
 # Runtime files
 *.pid
+startup.log
+startup.error.log
 
 # Debug and test files
 debug-*.sh
