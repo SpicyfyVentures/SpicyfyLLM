@@ -1,0 +1,86 @@
+# SpicyfyLLM - OpenWebUI Docker Compose Configuration
+# Complete setup for OpenWebUI with SearXNG search integration
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose down           # Stop all services
+#   docker-compose logs -f        # View logs
+#
+# Services:
+#   - OpenWebUI: AI chat interface (port 3000)
+#   - SearXNG: Privacy-focused search engine (port 8081)
+
+version: '3.8'
+
+services:
+  # OpenWebUI - Main AI chat interface
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "${OPENWEBUI_PORT:-3000}:8080"
+    volumes:
+      - open-webui:/app/backend/data
+    environment:
+      # Ollama connection (automatically connects to local Ollama if running)
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      
+      # Search engine integration
+      - ENABLE_RAG_WEB_SEARCH=true
+      - RAG_WEB_SEARCH_ENGINE=searxng
+      - SEARXNG_QUERY_URL=http://searxng:8081/search?q={query}
+      
+      # Security and customization
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-your-secret-key-change-this}
+      
+      # Optional: External API keys (uncomment and set in .env file)
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      
+      # Optional: Default models
+      # - DEFAULT_MODELS=${DEFAULT_MODELS:-ollama}
+    depends_on:
+      - searxng
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Uncomment the following for Linux to use host network (better Ollama connectivity)
+    # network_mode: host
+    # Comment out the ports section above if using host network
+
+  # SearXNG - Privacy-focused search engine
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    ports:
+      - "${SEARXNG_PORT:-8081}:8080"
+    volumes:
+      - searxng-config:/etc/searxng
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:${SEARXNG_PORT:-8081}/
+      - SEARXNG_SECRET_KEY=${SEARXNG_SECRET_KEY:-change-this-secret-key}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Persistent data volumes
+volumes:
+  open-webui:
+    driver: local
+    name: spicyfyllm_open-webui
+  searxng-config:
+    driver: local
+    name: spicyfyllm_searxng-config
+
+# Networks (optional - using default bridge network)
+networks:
+  default:
+    name: spicyfyllm_network

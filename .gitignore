@@ -1,0 +1,44 @@
+# Logs and temporary files
+*.log
+.ngrok_pid
+ngrok.log
+
+# Runtime files
+*.pid
+
+# Debug and test files
+debug-*.sh
+test-*.sh
+*-test.sh
+*-debug.sh
+minimal-*.sh
+working-*.sh
+fixed-*.sh
+isolated-*.sh
+simple-*.sh
+final-*.sh
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker volumes (if created locally)
+open-webui/
+searxng-config/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+*.orig
