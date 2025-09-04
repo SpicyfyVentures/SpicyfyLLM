@@ -932,7 +932,7 @@ setup_ngrok_tunnel() {
     
     if [[ $REPLY == "2" ]]; then
         echo ""
-        read -p "Enter your custom domain (e.g., chat.spicyfy.io): " custom_domain
+        read -p "Enter your custom domain (e.g., chat.yourdomain.com): " custom_domain
         if [ -n "$custom_domain" ]; then
             ngrok_command="ngrok http $OPENWEBUI_PORT --domain=$custom_domain --log=stdout"
             print_status "Starting ngrok tunnel with custom domain: $custom_domain"
