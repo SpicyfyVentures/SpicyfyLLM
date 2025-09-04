@@ -26,6 +26,13 @@ if [ -f "/Users/vamsikandikonda/Library/Application Support/ngrok/ngrok.yml" ]; 
     nohup ngrok start webui > ngrok.log 2>&1 &
     echo $! > .ngrok_pid
     echo "ngrok started with PID $(cat .ngrok_pid)"
+elif [ -f "ngrok_domain.conf" ]; then
+    # Use custom domain from configuration file
+    CUSTOM_DOMAIN=$(cat ngrok_domain.conf)
+    echo "Starting ngrok tunnel with custom domain: $CUSTOM_DOMAIN"
+    nohup ngrok http 3000 --domain=$CUSTOM_DOMAIN --log=stdout > ngrok.log 2>&1 &
+    echo $! > .ngrok_pid
+    echo "ngrok started with PID $(cat .ngrok_pid)"
 else
     echo "No ngrok configuration found, skipping tunnel setup"
 fi

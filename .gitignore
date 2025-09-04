@@ -7,6 +7,7 @@ ngrok.log
 *.pid
 startup.log
 startup.error.log
+ngrok_domain.conf
 
 # Debug and test files
 debug-*.sh

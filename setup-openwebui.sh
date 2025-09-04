@@ -919,10 +919,33 @@ setup_ngrok_tunnel() {
         ngrok config add-authtoken $authtoken
     fi
     
-    print_status "Starting ngrok tunnel on port $OPENWEBUI_PORT..."
+    # Ask user for custom domain preference
+    echo ""
+    echo "ngrok tunnel options:"
+    echo "1) Random subdomain (free) - e.g., https://abc123-def456.ngrok.io"
+    echo "2) Custom domain (paid plan required) - e.g., https://chat.spicyfy.io"
+    echo ""
+    read -p "Choose option (1/2): " -n 1 -r
+    echo
     
-    # Start ngrok in background with random subdomain
-    nohup ngrok http $OPENWEBUI_PORT --log=stdout > ngrok.log 2>&1 &
+    local ngrok_command="ngrok http $OPENWEBUI_PORT --log=stdout"
+    
+    if [[ $REPLY == "2" ]]; then
+        echo ""
+        read -p "Enter your custom domain (e.g., chat.spicyfy.io): " custom_domain
+        if [ -n "$custom_domain" ]; then
+            ngrok_command="ngrok http $OPENWEBUI_PORT --domain=$custom_domain --log=stdout"
+            print_status "Starting ngrok tunnel with custom domain: $custom_domain"
+        else
+            print_warning "No domain provided, using random subdomain"
+            print_status "Starting ngrok tunnel with random subdomain..."
+        fi
+    else
+        print_status "Starting ngrok tunnel with random subdomain..."
+    fi
+    
+    # Start ngrok in background
+    nohup $ngrok_command > ngrok.log 2>&1 &
     NGROK_PID=$!
     
     # Wait for ngrok to start
@@ -945,6 +968,11 @@ except:
         print_success "ngrok tunnel is active!"
         print_success "Public URL: $PUBLIC_URL"
         echo "ngrok PID: $NGROK_PID" > .ngrok_pid
+        
+        # Save custom domain for startup script if one was used
+        if [[ $REPLY == "2" ]] && [ -n "$custom_domain" ]; then
+            echo "$custom_domain" > ngrok_domain.conf
+        fi
         
         # Create a simple status script
         cat > check_status.sh << 'EOF'
@@ -1064,6 +1092,12 @@ cleanup() {
         print_status "Removing auto-start cron job..."
         crontab -l 2>/dev/null | grep -v "$startup_script" | crontab -
         print_success "Auto-start cron job removed"
+    fi
+    
+    # Remove ngrok domain configuration
+    if [ -f "ngrok_domain.conf" ]; then
+        rm -f ngrok_domain.conf
+        print_status "Removed ngrok domain configuration"
     fi
     
     # Remove systemd service if it exists (Linux)
