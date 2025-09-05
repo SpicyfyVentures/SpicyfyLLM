@@ -923,7 +923,7 @@ setup_ngrok_tunnel() {
     echo ""
     echo "ngrok tunnel options:"
     echo "1) Random subdomain (free) - e.g., https://abc123-def456.ngrok.io"
-    echo "2) Custom domain (paid plan required) - e.g., https://chat.spicyfy.io"
+    echo "2) Custom domain (paid plan required) - e.g., https://domain.com"
     echo ""
     read -p "Choose option (1/2): " -n 1 -r
     echo
