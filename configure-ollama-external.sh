@@ -431,27 +431,80 @@ show_status() {
             print_warning "⚠️  Ollama is localhost-only"
         fi
         
-        # Show models
+        # Ask user for custom domain preference
         echo ""
-        echo "📚 Installed models:"
-        ollama list 2>/dev/null || echo "   No models installed"
+        echo "ngrok tunnel options:"
+        echo "1) Random subdomain (free) - e.g., https://abc123-def456.ngrok.io"
+        echo "2) Custom domain (paid plan required) - e.g., https://chat.spicyfy.io"
+        echo ""
+        read -p "Choose option (1/2): " -n 1 -r
+        echo
         
-    else
-        print_error "❌ Ollama is not running"
-    fi
-    
-    # Check for ngrok tunnel
-    if [[ -f ".ollama_ngrok_pid" ]]; then
-        local ngrok_pid=$(cat .ollama_ngrok_pid)
-        if kill -0 "$ngrok_pid" 2>/dev/null; then
-            print_success "✅ ngrok tunnel is active"
-            echo "   🔧 Stop with: kill $ngrok_pid"
+        local ngrok_command="ngrok http 11434 --log=stdout"
+        
+        if [[ $REPLY == "2" ]]; then
+            echo ""
+            read -p "Enter your custom domain (e.g., chat.spicyfy.io): " custom_domain
+            if [ -n "$custom_domain" ]; then
+                ngrok_command="ngrok http 11434 --domain=$custom_domain --log=stdout"
+                print_status "Starting ngrok tunnel with custom domain: $custom_domain"
+            else
+                print_warning "No domain provided, using random subdomain"
+                print_status "Starting ngrok tunnel with random subdomain..."
+            fi
         else
-            print_warning "⚠️  ngrok tunnel PID file exists but process is not running"
-            rm -f .ollama_ngrok_pid
+            print_status "Starting ngrok tunnel with random subdomain..."
         fi
-    fi
-}
+        
+        # Setup ngrok tunnel as alternative
+        setup_ngrok_tunnel() {
+            print_step "Setting up ngrok tunnel for secure external access..."
+            
+            if ! command -v ngrok &> /dev/null; then
+                print_error "ngrok is not installed. Install it first:"
+                echo "Visit: https://ngrok.com/download"
+                return 1
+            fi
+            
+            # Check if ngrok is authenticated
+            if ! ngrok config check &> /dev/null; then
+                print_warning "ngrok is not authenticated"
+                echo "Please sign up at https://ngrok.com and get your authtoken"
+                read -p "Enter your ngrok authtoken: " authtoken
+                ngrok config add-authtoken "$authtoken"
+            fi
+            
+            print_status "Starting ngrok tunnel for Ollama..."
+            nohup $ngrok_command > ollama_ngrok.log 2>&1 &
+            NGROK_PID=$!
+            echo "$NGROK_PID" > .ollama_ngrok_pid
+            
+            sleep 5
+            
+            # Get the public URL
+            PUBLIC_URL=$(curl -s http://localhost:4040/api/tunnels | python3 -c "
+            import sys, json
+            try:
+                data = json.load(sys.stdin)
+                for tunnel in data['tunnels']:
+                    if tunnel['proto'] == 'https':
+                        print(tunnel['public_url'])
+                        break
+            except:
+                pass
+            " 2>/dev/null)
+            
+            if [[ -n "$PUBLIC_URL" ]]; then
+                print_success "🌐 Ollama ngrok tunnel active!"
+                print_success "Public URL: $PUBLIC_URL"
+                echo ""
+                echo "🧪 Test with: curl $PUBLIC_URL/api/tags"
+                echo "🔧 Stop tunnel: kill \$(cat .ollama_ngrok_pid)"
+            else
+                print_error "Failed to get ngrok public URL"
+                print_status "Check ngrok status at: http://localhost:4040"
+            fi
+        }
 
 # Main execution
 detect_os
