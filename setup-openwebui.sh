@@ -1267,6 +1267,15 @@ case "${1:-}" in
                 echo
                 if [[ $REPLY =~ ^[Yy]$ ]]; then
                     install_ollama
+                    
+                    # Ask about external access configuration
+                    echo ""
+                    read -p "Configure Ollama for external access? (y/N): " -n 1 -r
+                    echo
+                    if [[ $REPLY =~ ^[Yy]$ ]]; then
+                        print_info "You can configure external access after setup using:"
+                        print_info "  ./configure-ollama-external.sh --configure"
+                    fi
                 fi
             fi
         fi
@@ -1308,5 +1317,6 @@ case "${1:-}" in
         echo "   • Check status: ./setup-openwebui.sh --status"
         echo "   • Stop services: ./setup-openwebui.sh --cleanup"
         echo "   • Reset database: ./setup-openwebui.sh --reset-db"
+        echo "   • Configure Ollama external access: ./configure-ollama-external.sh"
         ;;
 esac
